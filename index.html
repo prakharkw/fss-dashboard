@@ -888,9 +888,18 @@
             }
         });
         
-        if (row.detection_ist) {
-            row.detection_date = row.detection_ist.split(' ')[0];
-        }
+         // Parse detection_date from various formats
+            if (row.week_start_date) {
+                row.detection_date = parseDate(row.week_start_date);
+            } else if (row.detection_ist) {
+                row.detection_date = row.detection_ist.split(' ')[0];
+            }
+            
+            // Recalculate week number with Sunday as start
+            if (row.detection_date || row.week_start_date) {
+                const dateStr = row.detection_date || row.week_start_date;
+                row.week = getWeekNumber(dateStr);
+            }
         
         data.push(row);
     }
@@ -919,6 +928,50 @@ function parseCSVLine(line, delimiter) {
     return result;
 }
 
+        // Parse various date formats
+    function parseDate(dateStr) {
+        if (!dateStr) return null;
+        
+        // Handle MM/DD/YYYY format
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                const month = parts[0].padStart(2, '0');
+                const day = parts[1].padStart(2, '0');
+                const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+                return `${year}-${month}-${day}`;
+            }
+        }
+        
+        // Handle YYYY-MM-DD format
+        if (dateStr.includes('-') && dateStr.length >= 10) {
+            return dateStr.substring(0, 10);
+        }
+        
+        return dateStr;
+    }
+
+    // Get week number with Sunday as start (US standard)
+    function getWeekNumber(dateStr) {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return 0;
+        
+        // Set to nearest Thursday: current date + 4 - current day number
+        // Make Sunday's day number 7
+        const dayNum = date.getDay() || 7;
+        
+        // For Sunday-start weeks, adjust the calculation
+        const startOfYear = new Date(date.getFullYear(), 0, 1);
+        const startDay = startOfYear.getDay(); // 0 = Sunday
+        
+        // Calculate days since start of year
+        const dayOfYear = Math.floor((date - startOfYear) / 86400000) + 1;
+        
+        // Adjust for Sunday start
+        const weekNum = Math.ceil((dayOfYear + startDay) / 7);
+        
+        return weekNum;
+    }
     /*function parseExcelData(text) {
         const lines = text.trim().split('\n');
         if (lines.length < 2) return [];
@@ -1118,97 +1171,130 @@ function parseCSVLine(line, delimiter) {
         updateCostTrendChart(chartId === 'monthlyChart' ? 'monthly' : 'weekly', type);
     }
 
+   function formatWithKL(num) {
+        if (num === 0 || !num) return '0';
+        if (num >= 100000) return (num / 100000).toFixed(2) + 'L';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return Math.round(num).toLocaleString('en-IN');
+    }
+
+    // Get year from data record
+    function getYearFromRecord(d) {
+        if (d.year && d.year > 0) return d.year;
+        if (d.year_month) {
+            const parts = d.year_month.split('-');
+            if (parts.length >= 1) return parseInt(parts[0]) || 0;
+        }
+        if (d.detection_date) {
+            return parseInt(d.detection_date.substring(0, 4)) || 0;
+        }
+        return 0;
+    }
+
+    // Get month from data record
+    function getMonthFromRecord(d) {
+        if (d.month && d.month > 0) return d.month;
+        if (d.year_month) {
+            const parts = d.year_month.split('-');
+            if (parts.length >= 2) return parseInt(parts[1]) || 0;
+        }
+        return 0;
+    }
+
     function getYTDData() {
-    // Get the max year from the actual data (not current real date)
-    const years = rawData.map(d => d.year || parseInt(d.year_month?.split('-')[0])).filter(y => y);
-    if (years.length === 0) return [];
-    const maxYear = Math.max(...years);
-    
-    return rawData.filter(d => {
-        const dataYear = d.year || parseInt(d.year_month?.split('-')[0]);
-        return dataYear === maxYear;
-    });
-}
-
-function getLastQuarterData() {
-    // Get the max year and month from actual data
-    const years = rawData.map(d => d.year || parseInt(d.year_month?.split('-')[0])).filter(y => y);
-    if (years.length === 0) return [];
-    const maxYear = Math.max(...years);
-    
-    const monthsInMaxYear = rawData
-        .filter(d => (d.year || parseInt(d.year_month?.split('-')[0])) === maxYear)
-        .map(d => d.month)
-        .filter(m => m);
-    if (monthsInMaxYear.length === 0) return [];
-    const maxMonth = Math.max(...monthsInMaxYear);
-    
-    // Determine which quarter the max month falls in
-    let currentQuarter;
-    if (maxMonth <= 3) currentQuarter = 1;
-    else if (maxMonth <= 6) currentQuarter = 2;
-    else if (maxMonth <= 9) currentQuarter = 3;
-    else currentQuarter = 4;
-    
-    // Calculate last quarter
-    let quarterStartMonth, quarterEndMonth, quarterYear;
-    if (currentQuarter === 1) {
-        // Current Q1 -> Last quarter is Q4 of previous year
-        quarterStartMonth = 10;
-        quarterEndMonth = 12;
-        quarterYear = maxYear - 1;
-    } else if (currentQuarter === 2) {
-        // Current Q2 -> Last quarter is Q1
-        quarterStartMonth = 1;
-        quarterEndMonth = 3;
-        quarterYear = maxYear;
-    } else if (currentQuarter === 3) {
-        // Current Q3 -> Last quarter is Q2
-        quarterStartMonth = 4;
-        quarterEndMonth = 6;
-        quarterYear = maxYear;
-    } else {
-        // Current Q4 -> Last quarter is Q3
-        quarterStartMonth = 7;
-        quarterEndMonth = 9;
-        quarterYear = maxYear;
+        // Find max year in data
+        const years = rawData.map(d => getYearFromRecord(d)).filter(y => y > 0);
+        if (years.length === 0) {
+            console.log('YTD: No valid years found');
+            return [];
+        }
+        const maxYear = Math.max(...years);
+        console.log('YTD: Max year =', maxYear);
+        
+        const filtered = rawData.filter(d => getYearFromRecord(d) === maxYear);
+        console.log('YTD: Records found =', filtered.length);
+        return filtered;
     }
-    
-    return rawData.filter(d => {
-        const dataYear = d.year || parseInt(d.year_month?.split('-')[0]);
-        const dataMonth = d.month;
-        return dataYear === quarterYear && dataMonth >= quarterStartMonth && dataMonth <= quarterEndMonth;
-    });
-}
 
-function getLastMonthData() {
-    // Get the max year and month from actual data
-    const years = rawData.map(d => d.year || parseInt(d.year_month?.split('-')[0])).filter(y => y);
-    if (years.length === 0) return [];
-    const maxYear = Math.max(...years);
-    
-    const monthsInMaxYear = rawData
-        .filter(d => (d.year || parseInt(d.year_month?.split('-')[0])) === maxYear)
-        .map(d => d.month)
-        .filter(m => m);
-    if (monthsInMaxYear.length === 0) return [];
-    const maxMonth = Math.max(...monthsInMaxYear);
-    
-    // Calculate last month
-    let lastMonth = maxMonth - 1;
-    let lastMonthYear = maxYear;
-    
-    if (lastMonth === 0) {
-        lastMonth = 12;
-        lastMonthYear = maxYear - 1;
+    function getLastQuarterData() {
+        // Find max year and month in data
+        const years = rawData.map(d => getYearFromRecord(d)).filter(y => y > 0);
+        if (years.length === 0) return [];
+        const maxYear = Math.max(...years);
+        
+        const monthsInMaxYear = rawData
+            .filter(d => getYearFromRecord(d) === maxYear)
+            .map(d => getMonthFromRecord(d))
+            .filter(m => m > 0);
+        if (monthsInMaxYear.length === 0) return [];
+        const maxMonth = Math.max(...monthsInMaxYear);
+        
+        console.log('Last Quarter: Max year =', maxYear, ', Max month =', maxMonth);
+        
+        // Determine current quarter based on max month in data
+        let currentQuarter;
+        if (maxMonth <= 3) currentQuarter = 1;
+        else if (maxMonth <= 6) currentQuarter = 2;
+        else if (maxMonth <= 9) currentQuarter = 3;
+        else currentQuarter = 4;
+        
+        // Calculate last quarter
+        let quarterStartMonth, quarterEndMonth, quarterYear;
+        if (currentQuarter === 1) {
+            quarterStartMonth = 10; quarterEndMonth = 12; quarterYear = maxYear - 1;
+        } else if (currentQuarter === 2) {
+            quarterStartMonth = 1; quarterEndMonth = 3; quarterYear = maxYear;
+        } else if (currentQuarter === 3) {
+            quarterStartMonth = 4; quarterEndMonth = 6; quarterYear = maxYear;
+        } else {
+            quarterStartMonth = 7; quarterEndMonth = 9; quarterYear = maxYear;
+        }
+        
+        console.log('Last Quarter: Q' + (currentQuarter - 1 || 4), '- Year:', quarterYear, 'Months:', quarterStartMonth, '-', quarterEndMonth);
+        
+        const filtered = rawData.filter(d => {
+            const dataYear = getYearFromRecord(d);
+            const dataMonth = getMonthFromRecord(d);
+            return dataYear === quarterYear && dataMonth >= quarterStartMonth && dataMonth <= quarterEndMonth;
+        });
+        
+        console.log('Last Quarter: Records found =', filtered.length);
+        return filtered;
     }
-    
-    return rawData.filter(d => {
-        const dataYear = d.year || parseInt(d.year_month?.split('-')[0]);
-        const dataMonth = d.month;
-        return dataYear === lastMonthYear && dataMonth === lastMonth;
-    });
-}
+
+    function getLastMonthData() {
+        // Find max year and month in data
+        const years = rawData.map(d => getYearFromRecord(d)).filter(y => y > 0);
+        if (years.length === 0) return [];
+        const maxYear = Math.max(...years);
+        
+        const monthsInMaxYear = rawData
+            .filter(d => getYearFromRecord(d) === maxYear)
+            .map(d => getMonthFromRecord(d))
+            .filter(m => m > 0);
+        if (monthsInMaxYear.length === 0) return [];
+        const maxMonth = Math.max(...monthsInMaxYear);
+        
+        // Calculate last month
+        let lastMonth = maxMonth - 1;
+        let lastMonthYear = maxYear;
+        
+        if (lastMonth === 0) {
+            lastMonth = 12;
+            lastMonthYear = maxYear - 1;
+        }
+        
+        console.log('Last Month: Year =', lastMonthYear, ', Month =', lastMonth);
+        
+        const filtered = rawData.filter(d => {
+            const dataYear = getYearFromRecord(d);
+            const dataMonth = getMonthFromRecord(d);
+            return dataYear === lastMonthYear && dataMonth === lastMonth;
+        });
+        
+        console.log('Last Month: Records found =', filtered.length);
+        return filtered;
+    }
 
     function updateKPIs() {
         const data = getFilteredData('all');
@@ -1225,14 +1311,17 @@ function getLastMonthData() {
         const ytdData = getYTDData();
         const ytdCost = ytdData.reduce((s, d) => s + (d.cost_saved || 0), 0);
         document.getElementById('kpiCostYTD').textContent = '$' + formatWithKL(ytdCost);
+        console.log('YTD Cost:', ytdCost);
         
         const quarterData = getLastQuarterData();
         const quarterCost = quarterData.reduce((s, d) => s + (d.cost_saved || 0), 0);
         document.getElementById('kpiCostQuarter').textContent = '$' + formatWithKL(quarterCost);
+        console.log('Quarter Cost:', quarterCost);
         
         const monthData = getLastMonthData();
         const monthCost = monthData.reduce((s, d) => s + (d.cost_saved || 0), 0);
         document.getElementById('kpiCostMonth').textContent = '$' + formatWithKL(monthCost);
+        console.log('Month Cost:', monthCost);
         
         // Team KPIs
         const avgSL = total > 0 ? data.reduce((s, d) => s + (d.sl || 0), 0) / total : 0;
@@ -1521,4 +1610,5 @@ function getLastMonthData() {
 </body>
 
 </html>
+
 
