@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FSS Empty Mileage Deviation Metrics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #ffffff;
+            font-size: 16px;
+        }
+
+        .dashboard-container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 25px;
+            margin-bottom: 25px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .header h1 {
+            color: #ffffff;
+            font-size: 2.4em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+        }
+
+        .header h1 span { color: #3498db; }
+        .header p { color: #8892b0; font-size: 1.05em; }
+
+        /* KPI Cards */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .kpi-card {
+            background: linear-gradient(145deg, #1e3a5f, #0d2137);
+            border-radius: 12px;
+            padding: 20px 15px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .kpi-card:hover { transform: translateY(-3px); }
+        .kpi-card.blue { border-top: 3px solid #3498db; }
+        .kpi-card.green { border-top: 3px solid #2ecc71; }
+        .kpi-card.orange { border-top: 3px solid #f39c12; }
+        .kpi-card.purple { border-top: 3px solid #9b59b6; }
+        .kpi-card.cyan { border-top: 3px solid #00cec9; }
+        .kpi-card.red { border-top: 3px solid #e74c3c; }
+        .kpi-card.teal { border-top: 3px solid #1abc9c; }
+        .kpi-card.pink { border-top: 3px solid #e91e63; }
+        .kpi-card.indigo { border-top: 3px solid #3f51b5; }
+
+        .kpi-label {
+            color: #a8b2c1;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .kpi-value { font-size: 1.9em; font-weight: 700; }
+        .kpi-card.blue .kpi-value { color: #3498db; }
+        .kpi-card.green .kpi-value { color: #2ecc71; }
+        .kpi-card.orange .kpi-value { color: #f39c12; }
+        .kpi-card.purple .kpi-value { color: #9b59b6; }
+        .kpi-card.cyan .kpi-value { color: #00cec9; }
+        .kpi-card.red .kpi-value { color: #e74c3c; }
+        .kpi-card.teal .kpi-value { color: #1abc9c; }
+        .kpi-card.pink .kpi-value { color: #e91e63; }
+        .kpi-card.indigo .kpi-value { color: #3f51b5; }
+
+        /* KPI visibility classes */
+        .kpi-stakeholder { display: block; }
+        .kpi-team { display: none; }
+
+        /* Filter Styles */
+        .filter-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .filter-section-title {
+            color: #3498db;
+            font-size: 1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            position: relative;
+            min-width: 180px;
+        }
+
+        .filter-group label {
+            color: #8892b0;
+            font-size: 0.95em;
+            font-weight: 600;
+        }
+
+        /* Dropdown Styling */
+        .multiselect-container { position: relative; user-select: none; }
+        .select-box {
+            position: relative; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px; padding: 10px 15px; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center; font-size: 0.95em; color: #fff;
+            min-height: 42px; transition: border-color 0.3s;
+        }
+        .select-box:hover { border-color: #3498db; }
+        .select-box::after { content: '▼'; font-size: 0.7em; color: #8892b0; margin-left: 10px; }
+        .checkboxes {
+            display: none; position: absolute; top: 100%; left: 0; right: 0;
+            background: #1a1a2e; border: 1px solid #3498db; border-radius: 8px;
+            margin-top: 5px; max-height: 250px; overflow-y: auto; z-index: 1000;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .checkboxes.active { display: block; }
+        .checkbox-item {
+            display: flex; align-items: center; padding: 10px 15px; cursor: pointer;
+            transition: background 0.2s; border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.95em;
+        }
+        .checkbox-item:hover { background: rgba(52, 152, 219, 0.2); }
+        .checkbox-item input { margin-right: 10px; accent-color: #3498db; width: 18px; height: 18px; }
+
+        /* Date Input Styling - FIXED calendar icon */
+        .date-input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        
+        .date-input-wrapper input[type="date"] {
+            padding: 10px 40px 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: #1a1a2e;
+            color: #ffffff;
+            font-size: 0.95em;
+            cursor: pointer;
+            height: 42px;
+            width: 100%;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        
+        .date-input-wrapper input[type="date"]:focus { 
+            outline: none; 
+            border-color: #3498db; 
+        }
+        
+        /* Hide default calendar icon */
+        .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 40px;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        /* Custom calendar icon - SVG with proper color */
+        .date-input-wrapper::after {
+            content: '';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238892b0'%3E%3Cpath d='M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+
+        .filter-btn-group { display: flex; gap: 10px; padding-bottom: 2px; }
+        .filter-btn {
+            padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;
+            font-weight: 600; font-size: 0.95em; transition: all 0.3s; height: 42px;
+        }
+        .filter-btn.primary { background: linear-gradient(135deg, #3498db, #2980b9); color: white; }
+        .filter-btn.secondary { background: rgba(255,255,255,0.1); color: #8892b0; }
+        .filter-btn:hover { transform: translateY(-2px); }
+
+        /* ============================================== */
+        /* TAB NAVIGATION STYLING */
+        /* ============================================== */
+        .tab-navigation {
+            display: flex;
+            gap: 5px;
+            margin-top: 30px;
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+
+        .tab-btn {
+            padding: 15px 30px;
+            background: linear-gradient(145deg, #1e3a5f, #0d2137);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-bottom: none;
+            border-radius: 12px 12px 0 0;
+            color: #8892b0;
+            font-size: 1.05em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            top: 1px;
+        }
+
+        .tab-btn:hover {
+            background: linear-gradient(145deg, #2a4a6f, #153047);
+            color: #a8b2c1;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            color: #ffffff;
+            border-color: #3498db;
+            box-shadow: 0 -5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .tab-btn .tab-icon {
+            font-size: 1.2em;
+        }
+
+        .tab-content-wrapper {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0 12px 12px 12px;
+            padding: 25px;
+            min-height: 500px;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- TABLE CARD STYLING --- */
+        .tables-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; margin-bottom: 35px; }
+        .tables-row.single { grid-template-columns: 1fr; }
+        
+        .table-card {
+            background: #172a46; 
+            border-radius: 10px; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.15);
+            display: flex; flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .table-header {
+            background: linear-gradient(90deg, rgba(46, 204, 113, 0.5), rgba(39, 174, 96, 0.5));
+            color: #ffffff; padding: 15px 18px; font-weight: 700; font-size: 1.1em;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            border-bottom: 2px solid rgba(46, 204, 113, 0.6);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .view-toggle, .metric-toggle { display: flex; gap: 5px; }
+        .view-toggle button, .metric-toggle button {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+            color: #fff; padding: 6px 12px; border-radius: 5px; cursor: pointer;
+            font-size: 0.85em; transition: all 0.2s;
+        }
+        .view-toggle button:hover, .metric-toggle button:hover { background: rgba(255,255,255,0.3); }
+        .view-toggle button.active { background: rgba(52, 152, 219, 0.7); border-color: #3498db; }
+        .metric-toggle button.active { background: rgba(46, 204, 113, 0.7); border-color: #2ecc71; }
+        .view-toggle button svg { width: 16px; height: 16px; vertical-align: middle; }
+
+        .table-wrapper {
+            overflow-x: auto; max-height: 380px; overflow-y: auto; position: relative;
+        }
+        
+        /* Special styling for associate tables - no horizontal scroll, auto height */
+        .table-wrapper.associate-table {
+            overflow-x: visible;
+            max-height: none;
+            overflow-y: visible;
+        }
+
+        .table-card table {
+            width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.95em;
+        }
+
+        .table-card th {
+            background: linear-gradient(180deg, #2c5282, #1e3a5f);
+            color: #63b3ed; 
+            padding: 14px 15px;
+            text-align: left;
+            font-size: 0.9em;
+            font-weight: 700; 
+            text-transform: uppercase;
+            position: sticky; 
+            top: 0; 
+            z-index: 20; 
+            white-space: nowrap;
+            border-bottom: 3px solid #3498db;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .table-card td {
+            padding: 12px 14px;
+            color: #e8e8e8;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            white-space: nowrap;
+            font-size: 0.95em;
+        }
+
+        /* Zebra Striping for better visibility */
+        .table-card tr:nth-child(even) td {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .table-card tr:hover td { 
+            background: rgba(52, 152, 219, 0.15) !important; 
+        }
+
+        /* Enhanced Total Row Styling */
+        .table-card .total-row td {
+            background: linear-gradient(180deg, #1e4d6b, #0d3a52) !important;
+            font-weight: 700; 
+            color: #5dade2 !important;
+            position: sticky; 
+            bottom: 0; 
+            z-index: 20;
+            border-top: 3px solid #3498db;
+            box-shadow: 0 -3px 6px rgba(0,0,0,0.3);
+            font-size: 1em;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .table-card .blank-row td { color: #888 !important; font-style: italic; }
+
+        /* --- CHART HEADER STYLING --- */
+        .chart-container {
+            background: #172a46;
+            border-radius: 10px;
+            padding: 0; 
+            border: 1px solid rgba(255,255,255,0.15);
+            margin-bottom: 25px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .chart-header {
+            background: linear-gradient(90deg, rgba(46, 204, 113, 0.5), rgba(39, 174, 96, 0.5));
+            border-bottom: 2px solid rgba(46, 204, 113, 0.6);
+            padding: 14px 18px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .chart-title { 
+            color: #ffffff; 
+            font-size: 1.1em;
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3); 
+        }
+        
+        .chart-toggle { display: flex; gap: 5px; }
+        .chart-toggle button {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+            color: #fff; padding: 6px 14px; border-radius: 5px; cursor: pointer; 
+            font-size: 0.85em; transition: all 0.2s;
+        }
+        .chart-toggle button:hover { background: rgba(255,255,255,0.3); }
+        .chart-toggle button.active { background: rgba(52, 152, 219, 0.7); border-color: #3498db; }
+        
+        .chart-wrapper { height: 320px; position: relative; padding: 20px; }
+        .charts-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; margin-bottom: 25px; }
+
+        .footer { 
+            text-align: center; 
+            padding: 25px; 
+            color: #8892b0; 
+            margin-top: 30px; 
+            font-size: 0.95em;
+            border-top: 1px solid rgba(255,255,255,0.1); 
+        }
+        .hidden { display: none !important; }
+
+        /* Responsive */
+        @media (max-width: 1400px) { .kpi-container { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 1000px) {
+            .kpi-container { grid-template-columns: repeat(2, 1fr); }
+            .tables-row, .charts-row { grid-template-columns: 1fr; }
+            .tab-btn { padding: 12px 20px; font-size: 0.95em; }
+        }
+        @media (max-width: 600px) {
+            .kpi-container { grid-template-columns: 1fr; }
+            .filter-row { flex-direction: column; align-items: stretch; }
+            .filter-btn-group { margin-top: 10px; justify-content: stretch; }
+            .filter-btn { width: 100%; }
+            .tab-navigation { flex-direction: column; gap: 0; }
+            .tab-btn { border-radius: 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+            .tab-btn:first-child { border-radius: 12px 12px 0 0; }
+            .tab-content-wrapper { border-radius: 0 0 12px 12px; }
+        }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb { background: rgba(52, 152, 219, 0.5); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(52, 152, 219, 0.7); }
+        .icon-table, .icon-chart { width: 18px; height: 18px; fill: currentColor; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>🚚 <span>FSS</span> Empty Mileage Deviation Metrics</h1>
+            <p>Deviation Tracking & Analysis | Last Updated: <span id="lastUpdated"></span></p>
+        </div>
+
+       <div class="kpi-container">
+            <!-- Always Visible KPIs -->
+            <div class="kpi-card blue">
+                <div class="kpi-label">Total Deviations Flagged</div>
+                <div class="kpi-value" id="kpiTotalCases">0</div>
+            </div>
+            <div class="kpi-card green">
+                <div class="kpi-label">Total Cost Saved</div>
+                <div class="kpi-value" id="kpiCostSaved">$0</div>
+            </div>
+            <div class="kpi-card orange">
+                <div class="kpi-label">Total Miles Saved</div>
+                <div class="kpi-value" id="kpiMilesSaved">0</div>
+            </div>
+            
+            <!-- Stakeholder KPIs (visible in Stakeholder tab) -->
+            <div class="kpi-card teal kpi-stakeholder" id="kpiYTDCard">
+                <div class="kpi-label">Cost Saved (YTD)</div>
+                <div class="kpi-value" id="kpiCostYTD">$0</div>
+            </div>
+            <div class="kpi-card indigo kpi-stakeholder" id="kpiQuarterCard">
+                <div class="kpi-label">Cost Saved (Last Quarter)</div>
+                <div class="kpi-value" id="kpiCostQuarter">$0</div>
+            </div>
+            <div class="kpi-card pink kpi-stakeholder" id="kpiMonthCard">
+                <div class="kpi-label">Cost Saved (Last Month)</div>
+                <div class="kpi-value" id="kpiCostMonth">$0</div>
+            </div>
+            
+            <!-- Team KPIs (visible in Team Performance tab) -->
+            <div class="kpi-card purple kpi-team" id="kpiAvgSLCard">
+                <div class="kpi-label">Avg SL (Minutes)</div>
+                <div class="kpi-value" id="kpiAvgSL">0</div>
+            </div>
+            <div class="kpi-card cyan kpi-team" id="kpiTourModifiedCard">
+                <div class="kpi-label">Tour Modified</div>
+                <div class="kpi-value" id="kpiTourModified">0</div>
+            </div>
+            <div class="kpi-card red kpi-team" id="kpiTourModifiedPctCard">
+                <div class="kpi-label">Tour Modified %</div>
+                <div class="kpi-value" id="kpiTourModifiedPct">0%</div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-section-title">🔍 Filters & Controls</div>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Shift:</label>
+                    <div class="multiselect-container" id="container-shift">
+                        <div class="select-box" onclick="toggleCheckboxArea('shift')">All Shifts</div>
+                        <div class="checkboxes" id="checkboxes-shift"></div>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Action:</label>
+                    <div class="multiselect-container" id="container-action">
+                        <div class="select-box" onclick="toggleCheckboxArea('action')">All Actions</div>
+                        <div class="checkboxes" id="checkboxes-action"></div>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Month:</label>
+                    <div class="multiselect-container" id="container-month">
+                        <div class="select-box" onclick="toggleCheckboxArea('month')">All Months</div>
+                        <div class="checkboxes" id="checkboxes-month"></div>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Week:</label>
+                    <div class="multiselect-container" id="container-week">
+                        <div class="select-box" onclick="toggleCheckboxArea('week')">All Weeks</div>
+                        <div class="checkboxes" id="checkboxes-week"></div>
+                    </div>
+                </div>
+                <div class="filter-group" style="min-width: 150px;">
+                    <label>Date From:</label>
+                    <div class="date-input-wrapper">
+                        <input type="date" id="filterStartDate">
+                    </div>
+                </div>
+                <div class="filter-group" style="min-width: 150px;">
+                    <label>Date To:</label>
+                    <div class="date-input-wrapper">
+                        <input type="date" id="filterEndDate">
+                    </div>
+                </div>
+                <div class="filter-btn-group">
+                    <button class="filter-btn primary" onclick="applyFilters()">Apply Filters</button>
+                    <button class="filter-btn secondary" onclick="resetFilters()">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB NAVIGATION -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="switchTab('stakeholder')" id="tabStakeholder">
+                <span class="tab-icon">📊</span>
+                <span>Stakeholder Dashboard</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('team')" id="tabTeam">
+                <span class="tab-icon">👥</span>
+                <span>Team Performance</span>
+            </button>
+        </div>
+
+        <div class="tab-content-wrapper">
+            <!-- STAKEHOLDER TAB CONTENT -->
+            <div class="tab-content active" id="contentStakeholder">
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <span class="chart-title">📈 Cost Saving Trend (Monthly)</span>
+                            <div class="chart-toggle">
+                                <button class="active" onclick="switchChartType('monthlyChart', 'shipper', this)">Shipper Size</button>
+                                <button onclick="switchChartType('monthlyChart', 'program', this)">Program Type</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="monthlyChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <span class="chart-title">📈 Cost Saving Trend (Weekly)</span>
+                            <div class="chart-toggle">
+                                <button class="active" onclick="switchChartType('weeklyChart', 'shipper', this)">Shipper Size</button>
+                                <button onclick="switchChartType('weeklyChart', 'program', this)">Program Type</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="weeklyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tables-row">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">💰 Cost Saved by Shipper Size (Monthly)</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table id="tableShipperMonthly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">💰 Cost Saved by Shipper Size (Weekly)</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table id="tableShipperWeekly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tables-row">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">💰 Cost Saved by Program Type (Monthly)</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table id="tableProgramMonthly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">📊 Count by Program Type (Weekly)</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table id="tableProgramWeekly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TEAM PERFORMANCE TAB CONTENT -->
+            <div class="tab-content" id="contentTeam">
+                <div class="tables-row">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">📊 Deviation Count by Shift (Monthly)</span>
+                            <div class="view-toggle">
+                                <button class="active" onclick="toggleView('shiftMonthly', 'table', this)">
+                                    <svg class="icon-table" viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h4V5H5zm6 0v4h4V5h-4zm6 0v4h4V5h-4zM5 11v4h4v-4H5zm6 0v4h4v-4h-4zm6 0v4h4v-4h-4zM5 17v2h4v-2H5zm6 0v2h4v-2h-4zm6 0v2h4v-2h-4z"/></svg>
+                                </button>
+                                <button onclick="toggleView('shiftMonthly', 'chart', this)">
+                                    <svg class="icon-chart" viewBox="0 0 24 24"><path d="M3 3v18h18v-2H5V3H3zm4 14h2V9H7v8zm4 0h2V6h-2v11zm4 0h2v-5h-2v5zm4 0h2V3h-2v14z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper" id="shiftMonthlyTable">
+                            <table id="tableShiftMonthly"><thead></thead><tbody></tbody></table>
+                        </div>
+                        <div class="chart-wrapper hidden" id="shiftMonthlyChart">
+                            <canvas id="chartShiftMonthly"></canvas>
+                        </div>
+                    </div>
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">📊 Deviation Count by Shift (Weekly)</span>
+                            <div class="view-toggle">
+                                <button class="active" onclick="toggleView('shiftWeekly', 'table', this)">
+                                    <svg class="icon-table" viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h4V5H5zm6 0v4h4V5h-4zm6 0v4h4V5h-4zM5 11v4h4v-4H5zm6 0v4h4v-4h-4zm6 0v4h4v-4h-4zM5 17v2h4v-2H5zm6 0v2h4v-2h-4zm6 0v2h4v-2h-4z"/></svg>
+                                </button>
+                                <button onclick="toggleView('shiftWeekly', 'chart', this)">
+                                    <svg class="icon-chart" viewBox="0 0 24 24"><path d="M3 3v18h18v-2H5V3H3zm4 14h2V9H7v8zm4 0h2V6h-2v11zm4 0h2v-5h-2v5zm4 0h2V3h-2v14z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper" id="shiftWeeklyTable">
+                            <table id="tableShiftWeekly"><thead></thead><tbody></tbody></table>
+                        </div>
+                        <div class="chart-wrapper hidden" id="shiftWeeklyChart">
+                            <canvas id="chartShiftWeekly"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tables-row">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">⏱️ Avg SL by Shift - Monthly (Minutes)</span>
+                            <div class="view-toggle">
+                                <button class="active" onclick="toggleView('slShiftMonthly', 'table', this)">
+                                    <svg class="icon-table" viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h4V5H5zm6 0v4h4V5h-4zm6 0v4h4V5h-4zM5 11v4h4v-4H5zm6 0v4h4v-4h-4zm6 0v4h4v-4h-4zM5 17v2h4v-2H5zm6 0v2h4v-2h-4zm6 0v2h4v-2h-4z"/></svg>
+                                </button>
+                                <button onclick="toggleView('slShiftMonthly', 'chart', this)">
+                                    <svg class="icon-chart" viewBox="0 0 24 24"><path d="M3 3v18h18v-2H5V3H3zm4 14h2V9H7v8zm4 0h2V6h-2v11zm4 0h2v-5h-2v5zm4 0h2V3h-2v14z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper" id="slShiftMonthlyTable">
+                            <table id="tableSLShiftMonthly"><thead></thead><tbody></tbody></table>
+                        </div>
+                        <div class="chart-wrapper hidden" id="slShiftMonthlyChart">
+                            <canvas id="chartSLShiftMonthly"></canvas>
+                        </div>
+                    </div>
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">⏱️ Avg SL by Shift - Weekly (Minutes)</span>
+                            <div class="view-toggle">
+                                <button class="active" onclick="toggleView('slShiftWeekly', 'table', this)">
+                                    <svg class="icon-table" viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h4V5H5zm6 0v4h4V5h-4zm6 0v4h4V5h-4zM5 11v4h4v-4H5zm6 0v4h4v-4h-4zm6 0v4h4v-4h-4zM5 17v2h4v-2H5zm6 0v2h4v-2h-4zm6 0v2h4v-2h-4z"/></svg>
+                                </button>
+                                <button onclick="toggleView('slShiftWeekly', 'chart', this)">
+                                    <svg class="icon-chart" viewBox="0 0 24 24"><path d="M3 3v18h18v-2H5V3H3zm4 14h2V9H7v8zm4 0h2V6h-2v11zm4 0h2v-5h-2v5zm4 0h2V3h-2v14z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper" id="slShiftWeeklyTable">
+                            <table id="tableSLShiftWeekly"><thead></thead><tbody></tbody></table>
+                        </div>
+                        <div class="chart-wrapper hidden" id="slShiftWeeklyChart">
+                            <canvas id="chartSLShiftWeekly"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tables-row">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">⏱️ Avg SL by Associate - Monthly (Minutes)</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table id="tableSLMonthly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">⏱️ Avg SL by Associate - Weekly (Minutes)</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table id="tableSLWeekly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Associate Performance Tables - No horizontal scroll -->
+                <div class="tables-row">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">📊 Associate Performance (Monthly)</span>
+                            <div class="metric-toggle" id="monthlyMetricToggle">
+                                <button class="active" onclick="switchMetric('monthly', 'count', this)">Count</button>
+                                <button onclick="switchMetric('monthly', 'cost', this)">Cost</button>
+                                <button onclick="switchMetric('monthly', 'miles', this)">Miles</button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper associate-table" id="associateMonthlyWrapper">
+                            <table id="tableAssociateMonthly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span class="table-header-title">📊 Associate Performance (Weekly)</span>
+                            <div class="metric-toggle" id="weeklyMetricToggle">
+                                <button class="active" onclick="switchMetric('weekly', 'count', this)">Count</button>
+                                <button onclick="switchMetric('weekly', 'cost', this)">Cost</button>
+                                <button onclick="switchMetric('weekly', 'miles', this)">Miles</button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper associate-table" id="associateWeeklyWrapper">
+                            <table id="tableAssociateWeekly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">FSS Operations Team | Dashboard v4.5</div>
+    </div>
+
+    <script>
+    // ==============================================
+    // 🔴 DATA
+    // ==============================================
+  
+    // ==============================================
+    // GLOBAL VARIABLES & INIT
+    // ==============================================
+    let rawData = [];
+    let monthNames = {};
+    let currentWeeklyMetric = 'count';
+    let currentMonthlyMetric = 'count';
+    let charts = {};
+    let currentTab = 'stakeholder';
+
+    const chartColors = [
+        'rgba(52, 152, 219, 1)', 'rgba(46, 204, 113, 1)', 'rgba(243, 156, 18, 1)',
+        'rgba(155, 89, 182, 1)', 'rgba(231, 76, 60, 1)', 'rgba(26, 188, 156, 1)', 'rgba(241, 196, 15, 1)'
+    ];
+
+    async function init() {
+    try {
+        // Option 1: If CSV is in same folder as HTML
+        //const csvUrl = 'Data.csv';
+        
+        // Option 2: If using GitHub raw URL (uncomment and modify)
+         const csvUrl = 'https://raw.githubusercontent.com/prakharkw/fss-dashboard/main/Data.csv';
+        
+        const response = await fetch(csvUrl);
+        if (!response.ok) {
+            throw new Error('Failed to load CSV file');
+        }
+        const csvText = await response.text();
+        rawData = parseCSVData(csvText);
+        
+        if (rawData.length === 0) { 
+            alert('No data loaded!'); 
+            return; 
+        }
+        
+        rawData.forEach(d => { 
+            if (d.month && d.month_name) monthNames[d.month] = d.month_name; 
+        });
+        
+        populateFilterOptions();
+        setDefaultDateRange();
+        updateDashboard();
+        
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('en-IN', {
+            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.multiselect-container')) {
+                document.querySelectorAll('.checkboxes').forEach(c => c.classList.remove('active'));
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error loading data:', error);
+        alert('Error loading data. Please check the console for details.');
+    }
+}
+
+    function parseCSVData(text) {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return [];
+    
+    // Detect delimiter (comma or tab)
+    const firstLine = lines[0];
+    const delimiter = firstLine.includes('\t') ? '\t' : ',';
+    
+    // Parse headers
+    const headers = parseCSVLine(lines[0], delimiter).map(h => 
+        h.trim().toLowerCase().replace(/\s+/g, '_').replace(/"/g, '')
+    );
+    
+    const data = [];
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue; // Skip empty lines
+        
+        const values = parseCSVLine(lines[i], delimiter);
+        const row = {};
+        
+        headers.forEach((header, index) => {
+            let value = values[index] ? values[index].trim().replace(/"/g, '') : '';
+            
+            if (['week', 'month', 'year', 'sl'].includes(header)) {
+                row[header] = parseInt(value) || 0;
+            } else if (['miles_saved', 'cost_saved'].includes(header)) {
+                row[header] = parseFloat(value) || 0;
+            } else {
+                row[header] = value;
+            }
+        });
+        
+        if (row.detection_ist) {
+            row.detection_date = row.detection_ist.split(' ')[0];
+        }
+        
+        data.push(row);
+    }
+    return data;
+}
+
+// Helper function to parse CSV line (handles quoted values with commas)
+function parseCSVLine(line, delimiter) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+            result.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current);
+    return result;
+}
+
+    /*function parseExcelData(text) {
+        const lines = text.trim().split('\n');
+        if (lines.length < 2) return [];
+        const headers = lines[0].split('\t').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+        const data = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split('\t');
+            const row = {};
+            headers.forEach((header, index) => {
+                let value = values[index] ? values[index].trim() : '';
+                if (['week', 'month', 'year', 'sl'].includes(header)) row[header] = parseInt(value) || 0;
+                else if (['miles_saved', 'cost_saved'].includes(header)) row[header] = parseFloat(value) || 0;
+                else row[header] = value;
+            });
+            if (row.detection_ist) row.detection_date = row.detection_ist.split(' ')[0];
+            data.push(row);
+        }
+        return data;
+    }*/
+
+    // ==============================================
+    // TAB SWITCHING
+    // ==============================================
+    function switchTab(tabName) {
+        currentTab = tabName;
+        
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabName === 'stakeholder' ? 'tabStakeholder' : 'tabTeam').classList.add('active');
+        
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(tabName === 'stakeholder' ? 'contentStakeholder' : 'contentTeam').classList.add('active');
+        
+        // Toggle KPI visibility based on tab
+        document.querySelectorAll('.kpi-stakeholder').forEach(k => {
+            k.style.display = tabName === 'stakeholder' ? 'block' : 'none';
+        });
+        document.querySelectorAll('.kpi-team').forEach(k => {
+            k.style.display = tabName === 'team' ? 'block' : 'none';
+        });
+        
+        // Re-render charts for the active tab
+        setTimeout(() => {
+            if (tabName === 'stakeholder') {
+                updateCostTrendChart('monthly', 'shipper');
+                updateCostTrendChart('weekly', 'shipper');
+            } else {
+                updateShiftCharts();
+                updateSLShiftCharts();
+            }
+        }, 100);
+    }
+
+    // ==============================================
+    // FILTER LOGIC
+    // ==============================================
+    function populateFilterOptions() {
+        const shifts = [...new Set(rawData.map(d => d.shift).filter(s => s))].sort();
+        createCheckboxList('shift', shifts, 'All Shifts');
+        const actions = [...new Set(rawData.map(d => d.action).filter(s => s))].sort();
+        createCheckboxList('action', actions, 'All Actions');
+        const months = [...new Set(rawData.map(d => d.month).filter(m => m))].sort((a,b) => a-b);
+        const monthOptions = months.map(m => ({ value: m, text: monthNames[m] || `Month ${m}` }));
+        createCheckboxList('month', monthOptions, 'All Months', true);
+        const weeks = [...new Set(rawData.map(d => d.week).filter(w => w))].sort((a,b) => a-b);
+        const weekOptions = weeks.map(w => ({ value: w, text: `W${w}` }));
+        createCheckboxList('week', weekOptions, 'All Weeks', true);
+    }
+
+    function createCheckboxList(id, items, defaultText, isObj = false) {
+        const container = document.getElementById(`checkboxes-${id}`);
+        container.innerHTML = `<label class="checkbox-item"><input type="checkbox" value="all" checked onchange="handleCheckboxChange('${id}')"> Select All</label>`;
+        items.forEach(item => {
+            const val = isObj ? item.value : item;
+            const txt = isObj ? item.text : item;
+            container.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${val}" checked onchange="handleCheckboxChange('${id}')"> ${txt}</label>`;
+        });
+    }
+
+    function toggleCheckboxArea(id) {
+        const el = document.getElementById(`checkboxes-${id}`);
+        const isActive = el.classList.contains('active');
+        document.querySelectorAll('.checkboxes').forEach(c => c.classList.remove('active'));
+        if (!isActive) el.classList.add('active');
+    }
+
+    function handleCheckboxChange(id) {
+        const container = document.getElementById(`checkboxes-${id}`);
+        const allCheck = container.querySelector('input[value="all"]');
+        const otherChecks = container.querySelectorAll('input:not([value="all"])');
+        if (event.target === allCheck) { otherChecks.forEach(cb => cb.checked = allCheck.checked); }
+        else { allCheck.checked = Array.from(otherChecks).every(cb => cb.checked); }
+        updateSelectBoxText(id);
+    }
+
+    function updateSelectBoxText(id) {
+        const container = document.getElementById(`checkboxes-${id}`);
+        const checks = container.querySelectorAll('input:not([value="all"]):checked');
+        const allCheck = container.querySelector('input[value="all"]');
+        const box = document.getElementById(`container-${id}`).querySelector('.select-box');
+        const total = container.querySelectorAll('input:not([value="all"])').length;
+        if (allCheck.checked || checks.length === total) box.innerText = `All ${id.charAt(0).toUpperCase() + id.slice(1)}s`;
+        else if (checks.length === 0) box.innerText = 'Select...';
+        else box.innerText = `${checks.length} Selected`;
+    }
+
+    function getSelectedValuesFromCheckboxes(id) {
+        const container = document.getElementById(`checkboxes-${id}`);
+        const allCheck = container.querySelector('input[value="all"]');
+        if (allCheck.checked) return ['all'];
+        return Array.from(container.querySelectorAll('input:not([value="all"]):checked')).map(cb => cb.value);
+    }
+
+    function setDefaultDateRange() {
+        const dates = rawData.map(d => d.detection_date).filter(d => d).sort();
+        if (dates.length > 0) {
+            document.getElementById('filterStartDate').value = dates[0];
+            document.getElementById('filterEndDate').value = dates[dates.length - 1];
+        }
+    }
+
+    function getFilteredData(type = 'all') {
+        const shifts = getSelectedValuesFromCheckboxes('shift');
+        const actions = getSelectedValuesFromCheckboxes('action');
+        const months = getSelectedValuesFromCheckboxes('month');
+        const weeks = getSelectedValuesFromCheckboxes('week');
+        const startDate = document.getElementById('filterStartDate').value;
+        const endDate = document.getElementById('filterEndDate').value;
+        return rawData.filter(d => {
+            if (startDate && d.detection_date && d.detection_date < startDate) return false;
+            if (endDate && d.detection_date && d.detection_date > endDate) return false;
+            if (!shifts.includes('all') && !shifts.includes(d.shift)) return false;
+            if (!actions.includes('all') && !actions.includes(d.action)) return false;
+            if (type === 'monthly' && !months.includes('all') && !months.includes(String(d.month))) return false;
+            if (type === 'weekly' && !weeks.includes('all') && !weeks.includes(String(d.week))) return false;
+            return true;
+        });
+    }
+
+    function getLast4OrFilteredData(type) {
+        let filtered = getFilteredData('all');
+        const monthsSelected = getSelectedValuesFromCheckboxes('month');
+        const weeksSelected = getSelectedValuesFromCheckboxes('week');
+        if (type === 'weeks') {
+            if (!weeksSelected.includes('all')) return filtered.filter(d => weeksSelected.includes(String(d.week)));
+            else {
+                const availableWeeks = [...new Set(filtered.map(d => d.week))].sort((a,b) => b-a).slice(0, 4);
+                return filtered.filter(d => availableWeeks.includes(d.week));
+            }
+        } else {
+            if (!monthsSelected.includes('all')) return filtered.filter(d => monthsSelected.includes(String(d.month)));
+            else {
+                const availableMonths = [...new Set(filtered.map(d => d.month))].sort((a,b) => b-a).slice(0, 4);
+                return filtered.filter(d => availableMonths.includes(d.month));
+            }
+        }
+    }
+
+    function applyFilters() { updateDashboard(); }
+    function resetFilters() {
+        ['shift', 'action', 'month', 'week'].forEach(id => {
+            const container = document.getElementById(`checkboxes-${id}`);
+            container.querySelectorAll('input').forEach(cb => cb.checked = true);
+            updateSelectBoxText(id);
+        });
+        setDefaultDateRange();
+        updateDashboard();
+    }
+
+    function updateDashboard() {
+        updateKPIs();
+        updatePart1Tables();
+        updatePart2Tables();
+        updateCharts();
+    }
+
+    function toggleView(viewId, viewType, btn) {
+        const tableEl = document.getElementById(viewId + 'Table');
+        const chartEl = document.getElementById(viewId + 'Chart');
+        btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (viewType === 'table') { tableEl.classList.remove('hidden'); chartEl.classList.add('hidden'); }
+        else { tableEl.classList.add('hidden'); chartEl.classList.remove('hidden'); }
+    }
+
+    function switchMetric(period, metric, btn) {
+        btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (period === 'weekly') { currentWeeklyMetric = metric; updateAssociateTable('weekly'); }
+        else { currentMonthlyMetric = metric; updateAssociateTable('monthly'); }
+    }
+
+    function switchChartType(chartId, type, btn) {
+        btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateCostTrendChart(chartId === 'monthlyChart' ? 'monthly' : 'weekly', type);
+    }
+
+    function getYTDData() {
+        const currentYear = new Date().getFullYear();
+        return rawData.filter(d => d.year === currentYear || d.year_month?.startsWith(String(currentYear)));
+    }
+
+    function getLastQuarterData() {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentYear = now.getFullYear();
+        
+        // Determine last quarter
+        let quarterStartMonth, quarterEndMonth, quarterYear;
+        if (currentMonth <= 3) {
+            // Q1 (Jan-Mar) -> Last quarter is Q4 of previous year (Oct-Dec)
+            quarterStartMonth = 10;
+            quarterEndMonth = 12;
+            quarterYear = currentYear - 1;
+        } else if (currentMonth <= 6) {
+            // Q2 (Apr-Jun) -> Last quarter is Q1 (Jan-Mar)
+            quarterStartMonth = 1;
+            quarterEndMonth = 3;
+            quarterYear = currentYear;
+        } else if (currentMonth <= 9) {
+            // Q3 (Jul-Sep) -> Last quarter is Q2 (Apr-Jun)
+            quarterStartMonth = 4;
+            quarterEndMonth = 6;
+            quarterYear = currentYear;
+        } else {
+            // Q4 (Oct-Dec) -> Last quarter is Q3 (Jul-Sep)
+            quarterStartMonth = 7;
+            quarterEndMonth = 9;
+            quarterYear = currentYear;
+        }
+        
+        return rawData.filter(d => {
+            const dataYear = d.year || parseInt(d.year_month?.split('-')[0]);
+            const dataMonth = d.month;
+            return dataYear === quarterYear && dataMonth >= quarterStartMonth && dataMonth <= quarterEndMonth;
+        });
+    }
+
+    function getLastMonthData() {
+        const now = new Date();
+        let lastMonth = now.getMonth(); // 0-11 (current month - 1)
+        let lastMonthYear = now.getFullYear();
+        
+        if (lastMonth === 0) {
+            lastMonth = 12;
+            lastMonthYear -= 1;
+        }
+        
+        return rawData.filter(d => {
+            const dataYear = d.year || parseInt(d.year_month?.split('-')[0]);
+            const dataMonth = d.month;
+            return dataYear === lastMonthYear && dataMonth === lastMonth;
+        });
+    }
+
+    function updateKPIs() {
+        const data = getFilteredData('all');
+        const total = data.length;
+        const cost = data.reduce((s, d) => s + (d.cost_saved || 0), 0);
+        const miles = data.reduce((s, d) => s + (d.miles_saved || 0), 0);
+        
+        // Common KPIs
+        document.getElementById('kpiTotalCases').textContent = total.toLocaleString('en-IN');
+        document.getElementById('kpiCostSaved').textContent = '$' + formatWithKL(cost);
+        document.getElementById('kpiMilesSaved').textContent = formatWithKL(miles);
+        
+        // Stakeholder KPIs - Time-based cost savings
+        const ytdData = getYTDData();
+        const ytdCost = ytdData.reduce((s, d) => s + (d.cost_saved || 0), 0);
+        document.getElementById('kpiCostYTD').textContent = '$' + formatWithKL(ytdCost);
+        
+        const quarterData = getLastQuarterData();
+        const quarterCost = quarterData.reduce((s, d) => s + (d.cost_saved || 0), 0);
+        document.getElementById('kpiCostQuarter').textContent = '$' + formatWithKL(quarterCost);
+        
+        const monthData = getLastMonthData();
+        const monthCost = monthData.reduce((s, d) => s + (d.cost_saved || 0), 0);
+        document.getElementById('kpiCostMonth').textContent = '$' + formatWithKL(monthCost);
+        
+        // Team KPIs
+        const avgSL = total > 0 ? data.reduce((s, d) => s + (d.sl || 0), 0) / total : 0;
+        const tourMod = data.filter(d => d.action === 'Tour Modified').length;
+        const tourPct = total > 0 ? (tourMod / total * 100) : 0;
+        
+        document.getElementById('kpiAvgSL').textContent = Math.round(avgSL);
+        document.getElementById('kpiTourModified').textContent = tourMod.toLocaleString('en-IN');
+        document.getElementById('kpiTourModifiedPct').textContent = tourPct.toFixed(1) + '%';
+    }
+
+    // ==============================================
+    // TABLES & PIVOTS
+    // ==============================================
+    function formatWithKL(num) {
+        if (num === 0 || !num) return '0';
+        if (num >= 100000) return (num / 100000).toFixed(2) + 'L';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return Math.round(num).toLocaleString('en-IN');
+    }
+
+    function updateKPIs() {
+        const data = getFilteredData('all');
+        const total = data.length;
+        const cost = data.reduce((s, d) => s + (d.cost_saved || 0), 0);
+        const miles = data.reduce((s, d) => s + (d.miles_saved || 0), 0);
+        const avgSL = total > 0 ? data.reduce((s, d) => s + (d.sl || 0), 0) / total : 0;
+        const tourMod = data.filter(d => d.action === 'Tour Modified').length;
+        const tourPct = total > 0 ? (tourMod / total * 100) : 0;
+
+        document.getElementById('kpiTotalCases').textContent = total.toLocaleString('en-IN');
+        document.getElementById('kpiCostSaved').textContent = '$' + formatWithKL(cost);
+        document.getElementById('kpiMilesSaved').textContent = formatWithKL(miles);
+        document.getElementById('kpiAvgSL').textContent = Math.round(avgSL);
+        document.getElementById('kpiTourModified').textContent = tourMod.toLocaleString('en-IN');
+        document.getElementById('kpiTourModifiedPct').textContent = tourPct.toFixed(1) + '%';
+    }
+
+    function pivot(data, rowKey, colKey, valKey, aggType) {
+        let rows = [...new Set(data.map(d => d[rowKey] || '(Blank)'))].sort((a,b) => a === '(Blank)' ? 1 : String(a).localeCompare(String(b)));
+        const cols = [...new Set(data.map(d => d[colKey]))].sort((a,b) => a-b);
+        const result = {}; const colTotals = {};
+        rows.forEach(r => { result[r] = {}; cols.forEach(c => result[r][c] = {sum: 0, count: 0}); });
+        cols.forEach(c => colTotals[c] = {sum: 0, count: 0});
+        data.forEach(d => {
+            const r = d[rowKey] || '(Blank)';
+            const c = d[colKey];
+            const v = parseFloat(d[valKey]) || 0;
+            if (result[r] && result[r][c]) {
+                result[r][c].sum += v; result[r][c].count += 1;
+                colTotals[c].sum += v; colTotals[c].count += 1;
+            }
+        });
+        return {result, rows, cols, colTotals, aggType};
+    }
+
+    function renderTable(tableId, pivotData, colPrefix, valFormat, rowLabel) {
+        const {result, rows, cols, colTotals, aggType} = pivotData;
+        const table = document.getElementById(tableId);
+        
+        let header = `<tr><th>${rowLabel}</th>`;
+        cols.forEach(c => {
+            const label = colPrefix === 'W' ? `W${c}` : (monthNames[c] || `M${c}`);
+            header += `<th>${label}</th>`;
+        });
+        header += `<th>Total</th></tr>`;
+        table.querySelector('thead').innerHTML = header;
+
+        let body = '';
+        let grandSum = 0, grandCount = 0;
+        if (rows.length === 0) {
+            body = `<tr><td colspan="${cols.length + 2}" style="text-align:center;color:#666;">No data</td></tr>`;
+        } else {
+            rows.forEach(r => {
+                let rowSum = 0, rowCount = 0;
+                const rowClass = r === '(Blank)' ? 'blank-row' : '';
+                body += `<tr class="${rowClass}"><td><strong>${r}</strong></td>`;
+                cols.forEach(c => {
+                    const cell = result[r][c];
+                    let val = aggType === 'count' ? cell.count : (aggType === 'avg' ? (cell.count > 0 ? cell.sum/cell.count : 0) : cell.sum);
+                    rowSum += cell.sum; rowCount += cell.count;
+                    body += `<td>${formatVal(val, valFormat, aggType)}</td>`;
+                });
+                const rowTotal = aggType === 'count' ? rowCount : (aggType === 'avg' ? (rowCount > 0 ? rowSum/rowCount : 0) : rowSum);
+                body += `<td><strong>${formatVal(rowTotal, valFormat, aggType)}</strong></td></tr>`;
+                grandSum += rowSum; grandCount += rowCount;
+            });
+            body += `<tr class="total-row"><td><strong>TOTAL</strong></td>`;
+            cols.forEach(c => {
+                const val = aggType === 'count' ? colTotals[c].count : (aggType === 'avg' ? (colTotals[c].count > 0 ? colTotals[c].sum/colTotals[c].count : 0) : colTotals[c].sum);
+                body += `<td>${formatVal(val, valFormat, aggType)}</td>`;
+            });
+            const grandTotal = aggType === 'count' ? grandCount : (aggType === 'avg' ? (grandCount > 0 ? grandSum/grandCount : 0) : grandSum);
+            body += `<td><strong>${formatVal(grandTotal, valFormat, aggType)}</strong></td></tr>`;
+        }
+        table.querySelector('tbody').innerHTML = body;
+    }
+
+    function formatVal(v, format, agg) {
+        if (!v || v === 0) return '<span style="color:#666">0</span>';
+        if (format === 'currency') return '$' + formatWithKL(v);
+        if (format === 'miles') return formatWithKL(v);
+        if (agg === 'avg') return Math.round(v).toLocaleString('en-IN');
+        return Math.round(v).toLocaleString('en-IN');
+    }
+
+    function updatePart1Tables() {
+        const monthlyData = getFilteredData('monthly');
+        const weeklyData = getFilteredData('weekly');
+        renderTable('tableShipperMonthly', pivot(monthlyData, 'shipper_size', 'month', 'cost_saved', 'sum'), 'M', 'currency', 'Shipper Size');
+        renderTable('tableShipperWeekly', pivot(weeklyData, 'shipper_size', 'week', 'cost_saved', 'sum'), 'W', 'currency', 'Shipper Size');
+        renderTable('tableProgramMonthly', pivot(monthlyData, 'program_type', 'month', 'cost_saved', 'sum'), 'M', 'currency', 'Program Type');
+        renderTable('tableProgramWeekly', pivot(weeklyData, 'program_type', 'week', 'deviation_id', 'count'), 'W', 'number', 'Program Type');
+    }
+
+    function updatePart2Tables() {
+        const monthlyData = getLast4OrFilteredData('months');
+        const weeklyData = getLast4OrFilteredData('weeks');
+
+        renderTable('tableShiftMonthly', pivot(monthlyData, 'shift', 'month', 'deviation_id', 'count'), 'M', 'number', 'Shift');
+        renderTable('tableShiftWeekly', pivot(weeklyData, 'shift', 'week', 'deviation_id', 'count'), 'W', 'number', 'Shift');
+        renderTable('tableSLShiftMonthly', pivot(monthlyData, 'shift', 'month', 'sl', 'avg'), 'M', 'number', 'Shift');
+        renderTable('tableSLShiftWeekly', pivot(weeklyData, 'shift', 'week', 'sl', 'avg'), 'W', 'number', 'Shift');
+
+        const slMonthly = monthlyData.filter(d => d.resolver_id);
+        const slWeekly = weeklyData.filter(d => d.resolver_id);
+        renderTable('tableSLMonthly', pivot(slMonthly, 'resolver_id', 'month', 'sl', 'avg'), 'M', 'number', 'Associate');
+        renderTable('tableSLWeekly', pivot(slWeekly, 'resolver_id', 'week', 'sl', 'avg'), 'W', 'number', 'Associate');
+
+        updateAssociateTable('weekly');
+        updateAssociateTable('monthly');
+    }
+
+    function updateAssociateTable(period) {
+        const data = getLast4OrFilteredData(period === 'weekly' ? 'weeks' : 'months');
+        const filteredData = data.filter(d => d.resolver_id);
+        const metric = period === 'weekly' ? currentWeeklyMetric : currentMonthlyMetric;
+        const colKey = period === 'weekly' ? 'week' : 'month';
+        const colPrefix = period === 'weekly' ? 'W' : 'M';
+        const tableId = period === 'weekly' ? 'tableAssociateWeekly' : 'tableAssociateMonthly';
+        
+        let valKey, aggType, valFormat;
+        switch(metric) {
+            case 'count': valKey = 'deviation_id'; aggType = 'count'; valFormat = 'number'; break;
+            case 'cost': valKey = 'cost_saved'; aggType = 'sum'; valFormat = 'currency'; break;
+            case 'miles': valKey = 'miles_saved'; aggType = 'sum'; valFormat = 'miles'; break;
+        }
+        renderTable(tableId, pivot(filteredData, 'resolver_id', colKey, valKey, aggType), colPrefix, valFormat, 'Associate');
+    }
+
+    // ==============================================
+    // CHARTS
+    // ==============================================
+    function updateCharts() {
+        updateCostTrendChart('monthly', 'shipper');
+        updateCostTrendChart('weekly', 'shipper');
+        updateShiftCharts();
+        updateSLShiftCharts();
+    }
+
+    function updateCostTrendChart(period, type) {
+        const data = period === 'monthly' ? getFilteredData('monthly') : getFilteredData('weekly');
+        const chartId = period === 'monthly' ? 'monthlyChart' : 'weeklyChart';
+        const colKey = period === 'monthly' ? 'month' : 'week';
+        const rowKey = type === 'shipper' ? 'shipper_size' : 'program_type';
+        const colPrefix = period === 'monthly' ? 'M' : 'W';
+        
+        const categories = [...new Set(data.map(d => d[rowKey] || '(Blank)'))].filter(c => c && c !== '(Blank)');
+        const periods = [...new Set(data.map(d => d[colKey]))].sort((a,b) => a-b);
+        
+        const datasets = [];
+        categories.forEach((cat, idx) => {
+            const catData = periods.map(p => {
+                const filtered = data.filter(d => d[rowKey] === cat && d[colKey] === p);
+                return filtered.reduce((sum, d) => sum + (d.cost_saved || 0), 0);
+            });
+            datasets.push({
+                label: cat, data: catData,
+                borderColor: chartColors[idx % chartColors.length],
+                backgroundColor: chartColors[idx % chartColors.length].replace('1)', '0.1)'),
+                tension: 0.3, fill: false
+            });
+        });
+        const overallData = periods.map(p => {
+            const filtered = data.filter(d => d[colKey] === p);
+            return filtered.reduce((sum, d) => sum + (d.cost_saved || 0), 0);
+        });
+        datasets.push({
+            label: 'Overall', data: overallData,
+            borderColor: 'rgba(255, 255, 255, 0.8)', backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: 3, tension: 0.3, fill: false
+        });
+        
+        const labels = periods.map(p => colPrefix === 'W' ? `W${p}` : (monthNames[p] || `M${p}`));
+        if (charts[chartId]) charts[chartId].destroy();
+        const ctx = document.getElementById(chartId).getContext('2d');
+        charts[chartId] = new Chart(ctx, {
+            type: 'line', data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#fff', usePointStyle: true, font: { size: 13 } } } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#8892b0', font: { size: 12 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#8892b0', font: { size: 12 }, callback: function(value) { return '$' + formatWithKL(value); } } }
+                }
+            }
+        });
+    }
+
+    function updateShiftCharts() {
+        const monthlyData = getLast4OrFilteredData('months');
+        const weeklyData = getLast4OrFilteredData('weeks');
+        createShiftChart('chartShiftMonthly', monthlyData, 'month', 'M');
+        createShiftChart('chartShiftWeekly', weeklyData, 'week', 'W');
+    }
+
+    function createShiftChart(canvasId, data, colKey, colPrefix) {
+        const shifts = [...new Set(data.map(d => d.shift).filter(s => s))].sort();
+        const periods = [...new Set(data.map(d => d[colKey]))].sort((a,b) => a-b);
+        const datasets = shifts.map((shift, idx) => {
+            const shiftData = periods.map(p => data.filter(d => d.shift === shift && d[colKey] === p).length);
+            return {
+                label: shift, data: shiftData,
+                borderColor: chartColors[idx % chartColors.length],
+                backgroundColor: chartColors[idx % chartColors.length].replace('1)', '0.5)'),
+                tension: 0.3
+            };
+        });
+        const labels = periods.map(p => colPrefix === 'W' ? `W${p}` : (monthNames[p] || `M${p}`));
+        if (charts[canvasId]) charts[canvasId].destroy();
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        charts[canvasId] = new Chart(ctx, {
+            type: 'line', data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#fff', usePointStyle: true, font: { size: 13 } } } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#8892b0', font: { size: 12 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#8892b0', font: { size: 12 } } }
+                }
+            }
+        });
+    }
+
+    function updateSLShiftCharts() {
+        const monthlyData = getLast4OrFilteredData('months');
+        const weeklyData = getLast4OrFilteredData('weeks');
+        createSLShiftChart('chartSLShiftMonthly', monthlyData, 'month', 'M');
+        createSLShiftChart('chartSLShiftWeekly', weeklyData, 'week', 'W');
+    }
+
+    function createSLShiftChart(canvasId, data, colKey, colPrefix) {
+        const shifts = [...new Set(data.map(d => d.shift).filter(s => s))].sort();
+        const periods = [...new Set(data.map(d => d[colKey]))].sort((a,b) => a-b);
+        const datasets = shifts.map((shift, idx) => {
+            const shiftData = periods.map(p => {
+                const filtered = data.filter(d => d.shift === shift && d[colKey] === p);
+                if (filtered.length === 0) return 0;
+                return filtered.reduce((sum, d) => sum + (d.sl || 0), 0) / filtered.length;
+            });
+            return {
+                label: shift, data: shiftData,
+                borderColor: chartColors[idx % chartColors.length],
+                backgroundColor: chartColors[idx % chartColors.length].replace('1)', '0.5)'),
+                tension: 0.3
+            };
+        });
+        const labels = periods.map(p => colPrefix === 'W' ? `W${p}` : (monthNames[p] || `M${p}`));
+        if (charts[canvasId]) charts[canvasId].destroy();
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        charts[canvasId] = new Chart(ctx, {
+            type: 'line', data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#fff', usePointStyle: true, font: { size: 13 } } } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#8892b0', font: { size: 12 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#8892b0', font: { size: 12 }, callback: function(value) { return value + ' min'; } } }
+                }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
