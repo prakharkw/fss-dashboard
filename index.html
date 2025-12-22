@@ -584,35 +584,9 @@
         </div>
 
         <div class="tab-content-wrapper">
-            <!-- STAKEHOLDER TAB CONTENT -->
+           <!-- STAKEHOLDER TAB CONTENT - Tables First, Charts at Bottom -->
             <div class="tab-content active" id="contentStakeholder">
-                <div class="charts-row">
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <span class="chart-title">📈 Cost Saving Trend (Monthly)</span>
-                            <div class="chart-toggle">
-                                <button class="active" onclick="switchChartType('monthlyChart', 'shipper', this)">Shipper Size</button>
-                                <button onclick="switchChartType('monthlyChart', 'program', this)">Program Type</button>
-                            </div>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="monthlyChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <span class="chart-title">📈 Cost Saving Trend (Weekly)</span>
-                            <div class="chart-toggle">
-                                <button class="active" onclick="switchChartType('weeklyChart', 'shipper', this)">Shipper Size</button>
-                                <button onclick="switchChartType('weeklyChart', 'program', this)">Program Type</button>
-                            </div>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="weeklyChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
+                <!-- Tables First -->
                 <div class="tables-row">
                     <div class="table-card">
                         <div class="table-header">
@@ -647,6 +621,34 @@
                         </div>
                         <div class="table-wrapper">
                             <table id="tableProgramWeekly"><thead></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts at Bottom -->
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <span class="chart-title">📈 Cost Saving Trend (Monthly)</span>
+                            <div class="chart-toggle">
+                                <button class="active" onclick="switchChartType('monthlyChart', 'shipper', this)">Shipper Size</button>
+                                <button onclick="switchChartType('monthlyChart', 'program', this)">Program Type</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="monthlyChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <span class="chart-title">📈 Cost Saving Trend (Weekly)</span>
+                            <div class="chart-toggle">
+                                <button class="active" onclick="switchChartType('weeklyChart', 'shipper', this)">Shipper Size</button>
+                                <button onclick="switchChartType('weeklyChart', 'program', this)">Program Type</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="weeklyChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -1519,3 +1521,4 @@ function getLastMonthData() {
 </body>
 
 </html>
+
